@@ -6,4 +6,4 @@ read day
 echo "Какое сегодня число? (1-31)"
 read number
 
-echo "Сегодня $day, $number число."
+echo "Не думал что $day будет $number числа"

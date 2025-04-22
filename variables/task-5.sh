@@ -1,5 +1,5 @@
-#!bin/bash
+#!/bin/bash
 
-readonly PI=3,14
+readonly PI=3.14
 
-echo "PI"
+echo "$PI"
