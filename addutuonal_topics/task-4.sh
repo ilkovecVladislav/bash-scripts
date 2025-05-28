@@ -1,0 +1,1 @@
+while read line; do ((++i)); echo "line$i,$line,"; done < /etc/os-release | xargs -n 2 -d ',' sh -c 'a=$(echo "$1" | tr -cd "[:print:]\n"); echo "$2" > "$a"' _ 2>/dev/null
