@@ -1,64 +1,42 @@
 #!/bin/bash
 
-# Проверяем, переданы ли аргументы (каталоги для бэкапа)
-if [ $# -eq 0 ]; then
-    echo "Использование: $0 /путь/к/директории1 /путь/к/директории2 ..."
-    exit 1
+# Проверка на наличие хотя бы одного аргумента
+if [ "$#" -lt 1 ]; then
+  echo "Использование: $0 /путь/к/каталогу1 [/путь/к/каталогу2 ...]"
+  exit 1
 fi
 
-# Инициализируем массив с каталогами для бэкапа
+# Массив директорий для резервного копирования
 backup_dirs=("$@")
 
 # Настройки резервного копирования
-dest_dir="/backups"                          # Каталог назначения на удаленном сервере
-dest_server="backup-server.example.com"      # Сервер для хранения бэкапов
-backup_time=$(date +"%Y%m%d_%H%M%S")         # Временная метка для имени архива
-backup_user="backup-user"                    # Пользователь для подключения по SSH
+read -p "Введите каталог назначения на сервере (например, /backups): " dest_dir
+read -p "Введите имя или IP-адрес сервера назначения: " dest_server
 
-# Создаем временный каталог для архивов
-temp_dir="/tmp/backups_$backup_time"
-mkdir -p "$temp_dir"
+# Время резервного копирования (в формате YYYY-MM-DD_HH-MM-SS)
+backup_time=$(date +%F_%H-%M-%S)
 
-echo "Начало процесса резервного копирования: $(date)"
-echo "Каталоги для резервирования: ${backup_dirs[*]}"
-
-# Проходим по всем каталогам для бэкапа
+# Перебор всех директорий
 for dir in "${backup_dirs[@]}"; do
-    # Проверяем существование каталога
-    if [ ! -d "$dir" ]; then
-        echo "Ошибка: каталог $dir не существует, пропускаем"
-        continue
-    fi
-
-    # Получаем базовое имя каталога
+  if [ -d "$dir" ]; then
+    # Извлекаем имя директории (без пути)
     dir_name=$(basename "$dir")
-    backup_file="$temp_dir/${dir_name}_${backup_time}.tar.gz"
-
-    echo "Архивируем $dir в $backup_file"
     
-    # Создаем сжатый архив
-    tar -czf "$backup_file" -C "$(dirname "$dir")" "$(basename "$dir")"
-    
-    if [ $? -ne 0 ]; then
-        echo "Ошибка при создании архива для $dir"
-        continue
-    fi
+    # Имя архива
+    archive_name="${dir_name}_${backup_time}.tar.gz"
+    archive_path="/tmp/$archive_name"
 
-    # Копируем архив на удаленный сервер
-    echo "Копируем $backup_file на сервер $dest_server:$dest_dir"
-    scp "$backup_file" "$backup_user@$dest_server:$dest_dir"
-    
-    if [ $? -ne 0 ]; then
-        echo "Ошибка при копировании $backup_file на удаленный сервер"
-    else
-        echo "Резервная копия $dir успешно создана и отправлена"
-    fi
+    echo "Создание архива $archive_path..."
+    tar -czf "$archive_path" "$dir"
 
-    # Удаляем временный файл
-    rm -f "$backup_file"
+    echo "Передача архива на $dest_server:$dest_dir..."
+    scp "$archive_path" "$dest_server:$dest_dir"
+
+    echo "Удаление временного архива..."
+    rm -f "$archive_path"
+
+    echo "Резервное копирование $dir завершено."
+  else
+    echo "Каталог $dir не существует. Пропуск..."
+  fi
 done
-
-# Удаляем временный каталог
-rm -rf "$temp_dir"
-
-echo "Процесс резервного копирования завершен: $(date)"
